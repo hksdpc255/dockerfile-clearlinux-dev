@@ -14,6 +14,7 @@ jobs:
     - name: Maximize build space
       uses: easimon/maximize-build-space@master
       with:
+        build-mount-path: /large_store
         root-reserve-mb: 512
         swap-size-mb: 1024
         remove-dotnet: 'true'
@@ -23,11 +24,11 @@ jobs:
         remove-docker-images: 'true'
 
     - run: |
-        sudo cp -a /var/lib/containers ../sys-stor || sudo mkdir ../sys-stor
-        cp -a ~/.local/share/containers/storage ../usr-stor || mkdir ../usr-stor
+        sudo cp -a /var/lib/containers /large_store/sys-stor || sudo mkdir /large_store/sys-stor
+        cp -a ~/.local/share/containers/storage /large_store/usr-stor || mkdir /large_store/usr-stor
         sudo rm -rf /var/lib/containers ~/.local/share/containers/storage
-        sudo ln -srv ../sys-stor /var/lib/containers || :
-        ln -srv ../usr-stor ~/.local/share/containers/storage || :
+        sudo ln -srv /large_store/sys-stor /var/lib/containers || :
+        ln -srv /large_store/usr-stor ~/.local/share/containers/storage || :
 
     - uses: actions/checkout@v4
 
