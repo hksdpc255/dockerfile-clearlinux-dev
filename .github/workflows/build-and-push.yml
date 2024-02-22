@@ -23,11 +23,11 @@ jobs:
         remove-docker-images: 'true'
 
     - run: |
-        sudo cp -a /var/lib/containers ./sys-stor || sudo mkdir ./sys-stor
-        cp -a ~/.local/share/containers/storage ./usr-stor || mkdir ./usr-stor
+        sudo cp -a /var/lib/containers ../sys-stor || sudo mkdir ../sys-stor
+        cp -a ~/.local/share/containers/storage ../usr-stor || mkdir ../usr-stor
         sudo rm -rf /var/lib/containers ~/.local/share/containers/storage
-        sudo ln -srv ./sys-stor /var/lib/containers || :
-        ln -srv ./usr-stor ~/.local/share/containers/storage || :
+        sudo ln -srv ../sys-stor /var/lib/containers || :
+        ln -srv ../usr-stor ~/.local/share/containers/storage || :
 
     - uses: actions/checkout@v4
 
