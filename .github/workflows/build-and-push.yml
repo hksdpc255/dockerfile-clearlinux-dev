@@ -25,7 +25,7 @@ jobs:
 
     - name: Enable btrfs zstd:3 compress for build space
       run: |
-        store_dev=`sed -e '/^[^ ]* \/large_store !d' -e 's@ .*@@g' -e '/^\/dev/!d' /proc/mounts | head -n 1`
+        store_dev=`sed -e '/^[^ ]* \/large_store /!d' -e 's@ .*@@g' -e '/^\/dev/!d' /proc/mounts | head -n 1`
         sudo tar -cpzvf /tmp/fsmount.tar -C /large_store .
         sudo umount /large_store
         sudo mkfs.btrfs -f "$store_dev"
