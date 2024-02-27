@@ -26,11 +26,9 @@ jobs:
     - name: Enable btrfs zstd:3 compress for build space
       run: |
         store_dev=`sed -e '/^[^ ]* \/large_store /!d' -e 's@ .*@@g' -e '/^\/dev/!d' /proc/mounts | head -n 1`
-        sudo tar -cpzvf /tmp/fsmount.tar -C /large_store .
         sudo umount /large_store
-        sudo mkfs.btrfs -f "$store_dev"
-        sudo mount -o noatime,compress=zstd:3 "$store_dev" /large_store
-        sudo tar -xpvf /tmp/fsmount.tar -C /large_store
+        sudo mkfs.btrfs -m single -d single -K -f "$store_dev"
+        sudo mount -o autodefrag,noatime,nobarrier,nodiscard,noflushoncommit,notreelog,compress=zstd:3,commit=432000 "$store_dev" /large_store
         sudo chown runner:runner /large_store
 
     - name: Move podman storage to build space
