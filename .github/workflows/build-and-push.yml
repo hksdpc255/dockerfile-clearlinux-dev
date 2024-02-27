@@ -2,8 +2,6 @@ name: Build Image using Containerfile
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
 
 jobs:
   build:
@@ -11,6 +9,35 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Invoke subset of free_disk_space.sh from apache/flink
+      run: |
+        echo "=============================================================================="
+        echo "Freeing up disk space on CI system"
+        echo "=============================================================================="
+        
+        echo "Listing 100 largest packages"
+        dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 100
+        df -h
+        echo "Removing large packages"
+        sudo apt-get remove -y '^dotnet-.*' || :
+        sudo apt-get remove -y '^llvm-.*' || :
+        sudo apt-get remove -y 'php.*' || :
+        sudo apt-get remove -y '^mongodb-.*' || :
+        sudo apt-get remove -y '^mysql-.*' || :
+        sudo apt-get remove -y azure-cli google-cloud-sdk hhvm google-chrome-stable firefox powershell mono-devel libgl1-mesa-dri || :
+        sudo apt-get autoremove -y
+        sudo apt-get clean
+        df -h
+        echo "Removing large directories"
+        
+        sudo rm -rf /usr/share/dotnet/
+        sudo rm -rf /usr/local/graalvm/
+        sudo rm -rf /usr/local/.ghcup/
+        sudo rm -rf /usr/local/share/powershell
+        sudo rm -rf /usr/local/share/chromium
+        sudo rm -rf /usr/local/lib/android
+        df -h
+
     - name: Maximize build space
       uses: easimon/maximize-build-space@master
       with:
@@ -45,22 +72,49 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Buildah Action
+      id: build-image
       uses: redhat-actions/buildah-build@v2
       with:
         image: clearlinux-dev
-        tags: latest ${{ github.sha }}
+        tags: latest
         containerfiles: |
           ./Dockerfile
+
+    - name: Get image tag
+      id: get-tag
+      run: |
+        CLR_VER=`sudo podman run --rm clearlinux-dev sh -c '. /etc/os-release ; echo "$VERSION_ID"'`
+        echo "clearlinux_version_id=$CLR_VER" >> "$GITHUB_OUTPUT"
 
     - name: Push To quay.io
       id: push-to-quay
       uses: redhat-actions/push-to-registry@v2
+      continue-on-error: true
       with:
         image: ${{ steps.build-image.outputs.image }}
-        tags: ${{ steps.build-image.outputs.tags }}
+        tags: ${{ steps.build-image.outputs.tags }} ${{ steps.get-tag.outputs.clearlinux_version_id }}
         registry: ${{ secrets.REGISTRY }}
         username: ${{ secrets.REGISTRY_USER }}
         password: ${{ secrets.REGISTRY_PASSWORD }}
 
     - name: Print image url
+      if: steps.push-to-quay.outcome == 'success' && steps.push-to-quay.conclusion == 'success'
+      continue-on-error: true
       run: echo "Image pushed to ${{ steps.push-to-quay.outputs.registry-paths }}"
+
+    - name: Save image as file
+      id: save-image
+      continue-on-error: true
+      run: |
+        sudo mkdir /large_store/usertmp
+        sudo chown runner:runner /large_store/usertmp
+        sudo podman image save clearlinux-dev | zstd -c -T0 -19 -v -v -v > /large_store/usertmp/clearlinux-dev.docker.tar.zst
+        sudo podman image rm -a -f -i
+
+    - name: Upload image as artifact
+      if: steps.save-image.outcome == 'success' && steps.save-image.conclusion == 'success'
+      uses: actions/upload-artifact@v4
+      continue-on-error: true
+      with:
+        name: clearlinux-dev-${{ steps.get-tag.outputs.clearlinux_version_id }}.docker.tar.zst
+        path: /large_store/usertmp/clearlinux-dev.docker.tar.zst
