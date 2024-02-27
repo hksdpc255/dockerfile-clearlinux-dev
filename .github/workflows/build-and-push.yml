@@ -38,6 +38,9 @@ jobs:
         sudo rm -vrf /var/lib/containers ~/.local/share/containers
         sudo ln -srv /large_store/sys-stor /var/lib/containers || :
         ln -srv /large_store/usr-stor ~/.local/share/containers || :
+        sudo cp -va /var/tmp /large_store/vartmp
+        sudo rm -vrf /var/tmp
+        sudo ln -srv /large_store/vartmp /var/tmp
 
     - uses: actions/checkout@v4
 
