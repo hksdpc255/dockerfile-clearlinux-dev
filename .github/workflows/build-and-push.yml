@@ -88,6 +88,7 @@ jobs:
       run: |
         CLR_VER=`podman run --rm clearlinux-dev sh -c '. /etc/os-release ; echo "$VERSION_ID"'`
         echo "clearlinux_version_id=$CLR_VER" >> "$GITHUB_OUTPUT"
+        podman image tag clearlinux-dev:latest "clearlinux-dev:$CLR_VER"
 
     - name: Push To quay.io
       id: push-to-quay
