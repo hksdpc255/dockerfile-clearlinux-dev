@@ -29,13 +29,13 @@ jobs:
         sudo umount /large_store
         sudo mkfs.btrfs -m single -d single -K -f "$store_dev"
         sudo mount -o autodefrag,noatime,nobarrier,nodiscard,noflushoncommit,notreelog,compress=zstd:3,commit=432000 "$store_dev" /large_store
-        sudo chown runner:runner /large_store
 
     - name: Move podman storage to build space
       run: |
-        sudo cp -a /var/lib/containers /large_store/sys-stor || sudo mkdir /large_store/sys-stor
-        cp -a ~/.local/share/containers /large_store/usr-stor || mkdir /large_store/usr-stor
-        sudo rm -rf /var/lib/containers ~/.local/share/containers
+        sudo cp -va /var/lib/containers /large_store/sys-stor || sudo mkdir /large_store/sys-stor
+        sudo mkdir /large_store/usr-stor && sudo chown runner:runner /large_store/usr-stor
+        [ ! -d ~/.local/share/containers ] || cp -va ~/.local/share/containers/. /large_store/usr-stor/.
+        sudo rm -vrf /var/lib/containers ~/.local/share/containers
         sudo ln -srv /large_store/sys-stor /var/lib/containers || :
         ln -srv /large_store/usr-stor ~/.local/share/containers || :
 
