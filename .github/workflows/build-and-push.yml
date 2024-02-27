@@ -19,13 +19,16 @@ jobs:
         dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 100
         df -h
         echo "Removing large packages"
-        sudo apt-get remove -y '^dotnet-.*' || :
-        sudo apt-get remove -y '^llvm-.*' || :
-        sudo apt-get remove -y 'php.*' || :
-        sudo apt-get remove -y '^mongodb-.*' || :
-        sudo apt-get remove -y '^mysql-.*' || :
-        sudo apt-get remove -y azure-cli google-cloud-sdk hhvm google-chrome-stable firefox powershell mono-devel libgl1-mesa-dri || :
-        sudo apt-get autoremove -y
+        sudo apt-get purge -y '^dotnet-.*' || :
+        sudo apt-get purge -y '^llvm-.*' || :
+        sudo apt-get purge -y 'php.*' || :
+        sudo apt-get purge -y '^mongodb-.*' || :
+        sudo apt-get purge -y '^mysql-.*' || :
+        sudo apt-get purge -y '^google-chrome.*' || :
+        sudo apt-get purge -y '^microsoft-edge.*' || :
+        sudo apt-get purge -y '^temurin-.*' || :
+        sudo apt-get purge -y azure-cli google-cloud-sdk hhvm firefox powershell mono-devel libgl1-mesa-dri || :
+        sudo apt-get autoremove -y --purge
         sudo apt-get clean
         df -h
         echo "Removing large directories"
@@ -83,7 +86,7 @@ jobs:
     - name: Get image tag
       id: get-tag
       run: |
-        CLR_VER=`sudo podman run --rm clearlinux-dev sh -c '. /etc/os-release ; echo "$VERSION_ID"'`
+        CLR_VER=`podman run --rm clearlinux-dev sh -c '. /etc/os-release ; echo "$VERSION_ID"'`
         echo "clearlinux_version_id=$CLR_VER" >> "$GITHUB_OUTPUT"
 
     - name: Push To quay.io
@@ -108,8 +111,8 @@ jobs:
       run: |
         sudo mkdir /large_store/usertmp
         sudo chown runner:runner /large_store/usertmp
-        sudo podman image save clearlinux-dev | zstd -c -T0 -19 -v -v -v > /large_store/usertmp/clearlinux-dev.docker.tar.zst
-        sudo podman image rm -a -f -i
+        podman image save clearlinux-dev | zstd -c -T0 -19 -v -v -v > /large_store/usertmp/clearlinux-dev.docker.tar.zst
+        podman image rm -a -f -i
 
     - name: Upload image as artifact
       if: steps.save-image.outcome == 'success' && steps.save-image.conclusion == 'success'
