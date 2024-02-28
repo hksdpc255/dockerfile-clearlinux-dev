@@ -1,0 +1,23 @@
+name: Docker Image CI
+
+on:
+  schedule:
+  - cron: 15 19 12 04 *
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - run: |
+        git config --global user.name "$GITHUB_REPOSITORY_OWNER"
+        git config --global user.email "$SEC_EMAIL"
+        git config --global pull.rebase false
+        sed -i "s/- cron: .*\$/- cron: $(date -u -d "$(shuf -n 1 -i 864000-4320000) sec" '+%M %H %d %m *')/" .github/workflows/docker-image.yml
+        git add .github/workflows/docker-image.yml
+        git commit -m "Update the status of the quay.io repository - $(date)"
+        git branch -M main
+        git push "https://${GITHUB_REPOSITORY_OWNER}:${SEC_TOKEN}@github.com/${GITHUB_REPOSITORY}"
+      env:
+        SEC_TOKEN: ${{ secrets.TOKEN }}
+        SEC_EMAIL: ${{ secrets.EMAIL }}Testing the status of the quay.io repository
