@@ -1,11 +1,33 @@
 name: Build Image using Containerfile
 on:
+  schedule:
+  - cron: 30 5,17 * * *
   push:
     branches: [ "main" ]
+    paths: [ "Dockerfile" ]
 
 jobs:
+  check:
+    name: Version check
+    runs-on: ubuntu-latest
+    outputs:
+      uptodate: ${{ steps.ver-chk.outputs.uptodate }}
+    steps:
+    - name: Version check
+      id: ver-chk
+      run: |
+        if [ push = "${{ github.event_name == 'push' }}" ] ; then
+          echo "uptodate=no" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        CLRDEV_VER="$(curl -L 'https://quay.io/api/v1/repository/bucloud/clearlinux-dev/tag/?page=1&limit=100' | jq -r '.tags|map(select(.name=="latest").manifest_digest)[0]as$latest_digest|map(select(.manifest_digest==$latest_digest)|select(.name!="latest"))[0].name')"
+        CLR_VER="`podman run --rm --pull=always docker.io/library/clearlinux:latest sh -c '. /etc/os-release ; echo "$VERSION_ID"'`"
+        echo "uptodate=`[ "$CLRDEV_VER" = "$CLR_VER" ] && echo yes || echo no`" >> "$GITHUB_OUTPUT"
+      
   build:
     name: Build image
+    needs: check
+    if: needs.check.outputs.uptodate == 'no'
     runs-on: ubuntu-latest
 
     steps:
@@ -113,7 +135,7 @@ jobs:
         sudo mkdir /large_store/usertmp
         sudo chown runner:runner /large_store/usertmp
         podman image save clearlinux-dev | zstd -c -T0 -19 -v -v -v > /large_store/usertmp/clearlinux-dev.docker.tar.zst
-        podman image rm -a -f -i
+        podman system reset -f
 
     - name: Upload image as artifact
       if: steps.save-image.outcome == 'success' && steps.save-image.conclusion == 'success'
