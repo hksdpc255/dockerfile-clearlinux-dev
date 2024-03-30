@@ -3,7 +3,7 @@ name: Docker Image CI
 on:
   workflow_dispatch:
   schedule:
-  - cron: 17 11 30 03 *
+  - cron: 34 04 11 05 *
 
 jobs:
   build:
