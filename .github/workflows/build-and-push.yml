@@ -96,14 +96,19 @@ jobs:
 
     - uses: actions/checkout@v4
 
-    - name: Buildah Action
+    #- name: Buildah Action
+    #  id: build-image
+    #  uses: redhat-actions/buildah-build@v2
+    #  with:
+    #    image: clearlinux-dev
+    #    tags: latest
+    #    containerfiles: |
+    #      ./Dockerfile
+
+    - name: Build image
       id: build-image
-      uses: redhat-actions/buildah-build@v2
-      with:
-        image: clearlinux-dev
-        tags: latest
-        containerfiles: |
-          ./Dockerfile
+      run: |
+        podman build . -t clearlinux-dev:latest
 
     - name: Get image tag
       id: get-tag
