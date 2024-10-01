@@ -5,7 +5,7 @@ ENV GOPATH /home/clr/go
 ENV PATH="/home/clr/go/bin:${PATH}"
 
 # Add bundles
-RUN swupd bundle-add mixer os-clr-on-clr-dev user-basic-dev containers-basic-dev R-extras-dev sudo && \
+RUN swupd bundle-add --skip-diskspace-check mixer os-clr-on-clr-dev user-basic-dev containers-basic-dev R-extras-dev sudo && \
     swupd clean --all && \
     useradd -G wheelnopw clr && \
     mkdir -p /run/lock
