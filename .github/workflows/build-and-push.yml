@@ -1,5 +1,6 @@
 name: Build Image using Containerfile
 on:
+  workflow_dispatch:
   schedule:
   - cron: 30 5,17 * * *
   push:
@@ -93,22 +94,20 @@ jobs:
         sudo cp -va /var/tmp /large_store/vartmp
         sudo rm -vrf /var/tmp
         sudo ln -srv /large_store/vartmp /var/tmp
+        sudo cp -va /home/runner /large_store/runner_home
+        sudo rm -vrf /home/runner
+        sudo ln -srv /large_store/runner_home /home/runner
 
     - uses: actions/checkout@v4
 
-    #- name: Buildah Action
-    #  id: build-image
-    #  uses: redhat-actions/buildah-build@v2
-    #  with:
-    #    image: clearlinux-dev
-    #    tags: latest
-    #    containerfiles: |
-    #      ./Dockerfile
-
-    - name: Build image
+    - name: Buildah Action
       id: build-image
-      run: |
-        podman build . -t clearlinux-dev:latest
+      uses: redhat-actions/buildah-build@v2
+      with:
+        image: clearlinux-dev
+        tags: latest
+        containerfiles: |
+          ./Dockerfile
 
     - name: Get image tag
       id: get-tag
