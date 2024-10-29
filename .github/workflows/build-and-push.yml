@@ -55,19 +55,18 @@ jobs:
         sudo apt-get clean
         df -h
         echo "Removing large directories"
-        
         sudo rm -rf /usr/share/dotnet/
         sudo rm -rf /usr/local/graalvm/
         sudo rm -rf /usr/local/.ghcup/
         sudo rm -rf /usr/local/share/powershell
         sudo rm -rf /usr/local/share/chromium
         sudo rm -rf /usr/local/lib/android
-
         sudo rm -rf ~/.rustup ~/.dotnet
-        
+        echo "Prune container images"
+        sudo docker system prune -f || :
+        sudo podman system reset -f || :
+        podman system reset -f || :
         df -h
-        sudo podman info
-        podman info
 
     - name: Maximize build space
       uses: easimon/maximize-build-space@master
@@ -90,6 +89,9 @@ jobs:
 
     - name: Move podman storage to build space
       run: |
+        sudo systemctl stop docker.service docker.socket || true
+        sudo systemctl stop podman.service podman.socket || true
+        systemctl --user stop podman.service podman.socket || true
         sudo cp -va /var/lib/containers /large_store/sys-stor || sudo mkdir /large_store/sys-stor
         sudo mkdir /large_store/usr-stor && sudo chown runner:runner /large_store/usr-stor
         [ ! -d ~/.local/share/containers ] || cp -va ~/.local/share/containers/. /large_store/usr-stor/.
@@ -99,9 +101,12 @@ jobs:
         sudo cp -va /var/tmp /large_store/vartmp
         sudo rm -vrf /var/tmp
         sudo ln -srv /large_store/vartmp /var/tmp
-        sudo cp -a /home/runner /large_store/runner_home
-        sudo rm -rf /home/runner
-        sudo ln -sr /large_store/runner_home /home/runner
+        #sudo cp -va /home/runner /large_store/runner_home
+        #sudo rm -vrf /home/runner
+        #sudo ln -vsr /large_store/runner_home /home/runner
+        sudo systemctl start docker.socket || :
+        sudo systemctl start podman.socket || :
+        systemctl --user start podman.socket || :
 
     - uses: actions/checkout@v4
 
