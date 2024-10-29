@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Invoke subset of free_disk_space.sh from apache/flink
+    - name: Invoke subset of free_disk_space.sh from apache/flink and action.yml from easimon/maximize-build-space
       run: |
         echo "=============================================================================="
         echo "Freeing up disk space on CI system"
@@ -61,31 +61,63 @@ jobs:
         sudo rm -rf /usr/local/share/powershell
         sudo rm -rf /usr/local/share/chromium
         sudo rm -rf /usr/local/lib/android
+        sudo rm -rf /opt/ghc /opt/hostedtoolcache/CodeQL
         sudo rm -rf ~/.rustup ~/.dotnet
         echo "Prune container images"
-        sudo docker system prune -f || :
+        sudo docker system prune -a -f || :
         sudo podman system reset -f || :
         podman system reset -f || :
         df -h
 
-    - name: Maximize build space
-      uses: easimon/maximize-build-space@master
-      with:
-        build-mount-path: /large_store
-        root-reserve-mb: 512
-        swap-size-mb: 1024
-        remove-dotnet: 'true'
-        remove-android: 'true'
-        remove-haskell: 'true'
-        remove-codeql: 'true'
-        remove-docker-images: 'true'
-
-    - name: Enable btrfs zstd:3 compress for build space
+    - name: Maximize build space from easimon/maximize-build-space with btrfs:zstd:3 patch
       run: |
-        store_dev=`sed -e '/^[^ ]* \/large_store /!d' -e 's@ .*@@g' -e '/^\/dev/!d' /proc/mounts | head -n 1`
-        sudo umount /large_store
-        sudo mkfs.btrfs -m single -d single -K -f "$store_dev"
-        sudo mount -o autodefrag,noatime,nobarrier,nodiscard,noflushoncommit,notreelog,compress=zstd:3,commit=432000 "$store_dev" /large_store
+        BUILD_MOUNT_PATH=/large_store
+        VG_NAME=buildvg
+
+        sudo mkdir -p "${BUILD_MOUNT_PATH}"
+        
+        # github runners have an active swap file in /mnt/swapfile
+        # we want to reuse the temp disk, so first unmount swap and clean the temp disk
+        echo "Unmounting and removing swap file."
+        sudo swapoff -a
+        sudo rm -f /mnt/swapfile
+        
+        echo "Creating LVM Volume."
+        echo "  Creating LVM PV on root fs."
+        # create loop pv image on root fs
+        ROOT_RESERVE_KB=$(expr 512 \* 1024)
+        ROOT_FREE_KB=$(df --block-size=1024 --output=avail / | tail -1)
+        ROOT_LVM_SIZE_KB=$(expr $ROOT_FREE_KB - $ROOT_RESERVE_KB)
+        ROOT_LVM_SIZE_BYTES=$(expr $ROOT_LVM_SIZE_KB \* 1024)
+        sudo touch /pv.img && sudo fallocate -z -l "${ROOT_LVM_SIZE_BYTES}" /pv.img
+        export ROOT_LOOP_DEV=$(sudo losetup --find --show /pv.img)
+        sudo pvcreate -f "${ROOT_LOOP_DEV}"
+        
+        # create pv on temp disk
+        echo "  Creating LVM PV on temp fs."
+        TMP_RESERVE_KB=$(expr 100 \* 1024)
+        TMP_FREE_KB=$(df --block-size=1024 --output=avail /mnt | tail -1)
+        TMP_LVM_SIZE_KB=$(expr $TMP_FREE_KB - $TMP_RESERVE_KB)
+        TMP_LVM_SIZE_BYTES=$(expr $TMP_LVM_SIZE_KB \* 1024)
+        sudo touch /mnt/tmp-pv.img && sudo fallocate -z -l "${TMP_LVM_SIZE_BYTES}" /mnt/tmp-pv.img
+        export TMP_LOOP_DEV=$(sudo losetup --find --show /mnt/tmp-pv.img)
+        sudo pvcreate -f "${TMP_LOOP_DEV}"
+        
+        # create volume group from these pvs
+        sudo vgcreate "${VG_NAME}" "${TMP_LOOP_DEV}" "${ROOT_LOOP_DEV}"
+        
+        echo "Recreating swap"
+        # create and activate swap
+        sudo lvcreate -L 1024M -n swap "${VG_NAME}"
+        sudo mkswap "/dev/mapper/${VG_NAME}-swap"
+        sudo swapon "/dev/mapper/${VG_NAME}-swap"
+        
+        echo "Creating build volume"
+        # create and mount build volume
+        sudo lvcreate -l 100%FREE -n buildlv "${VG_NAME}"
+        sudo mkfs.btrfs -m single -d single -K -f "/dev/mapper/${VG_NAME}-buildlv"
+        sudo mount -o autodefrag,noatime,nobarrier,nodiscard,noflushoncommit,notreelog,compress=zstd:3,commit=432000 "/dev/mapper/${VG_NAME}-buildlv" "${BUILD_MOUNT_PATH}"
+        sudo chown -R "$(id -un):$(id -gn)" "${BUILD_MOUNT_PATH}"
 
     - name: Move podman storage to build space
       run: |
