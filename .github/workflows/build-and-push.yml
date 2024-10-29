@@ -62,6 +62,9 @@ jobs:
         sudo rm -rf /usr/local/share/powershell
         sudo rm -rf /usr/local/share/chromium
         sudo rm -rf /usr/local/lib/android
+
+        sudo rm -rf ~/.rustup ~/.dotnet
+        
         df -h
 
     - name: Maximize build space
@@ -97,6 +100,7 @@ jobs:
         sudo cp -va /home/runner /large_store/runner_home
         sudo rm -vrf /home/runner
         sudo ln -srv /large_store/runner_home /home/runner
+        podman info
 
     - uses: actions/checkout@v4
 
