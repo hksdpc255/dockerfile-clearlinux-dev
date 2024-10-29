@@ -66,6 +66,8 @@ jobs:
         sudo rm -rf ~/.rustup ~/.dotnet
         
         df -h
+        sudo podman info
+        podman info
 
     - name: Maximize build space
       uses: easimon/maximize-build-space@master
@@ -97,10 +99,9 @@ jobs:
         sudo cp -va /var/tmp /large_store/vartmp
         sudo rm -vrf /var/tmp
         sudo ln -srv /large_store/vartmp /var/tmp
-        sudo cp -va /home/runner /large_store/runner_home
-        sudo rm -vrf /home/runner
-        sudo ln -srv /large_store/runner_home /home/runner
-        podman info
+        sudo cp -a /home/runner /large_store/runner_home
+        sudo rm -rf /home/runner
+        sudo ln -sr /large_store/runner_home /home/runner
 
     - uses: actions/checkout@v4
 
