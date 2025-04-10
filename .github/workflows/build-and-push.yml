@@ -17,7 +17,7 @@ jobs:
     - name: Version check
       id: ver-chk
       run: |
-        if [ true = "${{ github.event_name == 'push' }}" ] ; then
+        if [ true = "${{ contains(fromJSON('["push", "workflow_dispatch"]'), github.event_name) }}" ] ; then
           echo "uptodate=no" >> "$GITHUB_OUTPUT"
           exit 0
         fi
