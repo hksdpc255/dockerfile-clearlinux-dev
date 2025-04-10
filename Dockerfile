@@ -18,15 +18,21 @@ RUN swupd bundle-add --skip-diskspace-check \
 
 # Replace ptmalloc in glibc by mi-malloc
 RUN git clone --recurse-submodules --depth=1 --shallow-submodules https://github.com/microsoft/mimalloc && \
-    mkdir -p mimalloc/out/release
-    cd mimalloc/out/release && \
+    mkdir -p mimalloc/out/64 && \
+    cd mimalloc/out/64 && \
     cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS="$CFLAGS" -DCMAKE_CXX_FLAGS="$CXXFLAGS" -DCMAKE_INSTALL_PREFIX=/usr ../.. && \
     make -j`nproc` && \
     make install && \
     cd ../../.. && \
+#    mkdir -p mimalloc/out/32 && \
+#    cd mimalloc/out/32 && \
+#    cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS="$(printf '%s' "$CFLAGS" | sed 's/ -m64 / /g') -m32" -DCMAKE_CXX_FLAGS="$(printf '%s' "$CXXFLAGS" | sed 's/ -m64 / /g') -m32" -DCMAKE_INSTALL_PREFIX=/usr ../.. && \
+#    make -j`nproc` && \
+#    make install && \
+#    cd ../../.. && \
     rm -rf mimalloc && \
     touch /etc/ld.so.preload && \
-    NEW_PRELOAD="$( printf ' %s' /usr/lib64/libmimalloc.so $(cat /etc/ld.so.preload) )" && \
+    NEW_PRELOAD="$( printf ' %s' '/usr/$LIB/libmimalloc.so' $(cat /etc/ld.so.preload) )" && \
     echo $NEW_PRELOAD | tr -d '\n' > /etc/ld.so.preload
 
 USER clr
