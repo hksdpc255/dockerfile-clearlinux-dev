@@ -15,6 +15,20 @@ RUN swupd bundle-add --skip-diskspace-check \
     usermod -p "*" root && \
     passwd -el root && \
     chage -d -1 -m -1 -M -1 -W -1 -I -1 -E -1 root
+
+# Replace ptmalloc in glibc by mi-malloc
+RUN git clone --recurse-submodules --depth=1 --shallow-submodules https://github.com/microsoft/mimalloc && \
+    mkdir -p mimalloc/out/release
+    cd mimalloc/out/release && \
+    cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS="$CFLAGS" -DCMAKE_CXX_FLAGS="$CXXFLAGS" -DCMAKE_INSTALL_PREFIX=/usr ../.. && \
+    make -j`nproc` && \
+    make install && \
+    cd ../../.. && \
+    rm -rf mimalloc && \
+    touch /etc/ld.so.preload && \
+    NEW_PRELOAD="$( printf ' %s' /usr/lib64/libmimalloc.so $(cat /etc/ld.so.preload) )" && \
+    echo $NEW_PRELOAD | tr -d '\n' > /etc/ld.so.preload
+
 USER clr
 RUN git config --global user.email "you@example.com" && \
     git config --global user.name "Your Name"
