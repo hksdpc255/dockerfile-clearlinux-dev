@@ -23,6 +23,8 @@ jobs:
         fi
         CLRDEV_VER="$(curl -L 'https://quay.io/api/v1/repository/bucloud/clearlinux-dev/tag/?page=1&limit=100' | jq -r '.tags|map(select(.name=="latest").manifest_digest)[0]as$latest_digest|map(select(.manifest_digest==$latest_digest)|select(.name!="latest"))[0].name')"
         CLR_VER="`podman run --rm --pull=always docker.io/library/clearlinux:latest sh -c '. /etc/os-release ; echo "$VERSION_ID"'`"
+        echo "Upstream version: $CLR_VER"
+        echo "  CLRDEV version: $CLRDEV_VER"
         echo "uptodate=`[ "$CLRDEV_VER" = "$CLR_VER" ] && echo yes || echo no`" >> "$GITHUB_OUTPUT"
       
   build:
